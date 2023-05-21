@@ -8,6 +8,8 @@
  */
 #include "csapp.h"
 
+#define test11_9
+
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
@@ -131,7 +133,7 @@ int parse_uri(char *uri, char *filename, char * cgiargs)
     strcat(filename, uri);
     if (uri[strlen(uri) - 1] == '/')
     {
-      strcat(filename, "home.html");
+      strcat(filename, "test.html");
     }
     return 1;
   }
@@ -157,7 +159,6 @@ void serve_static(int fd, char *filename, int filesize)
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
-
   get_filetype(filename, filetype);
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer : Tiny Web Server\r\n", buf);
@@ -185,6 +186,10 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "image/png");
   else if(strstr(filename, ".jpg"))
     strcpy(filetype, "image/jpeg");
+  else if(strstr(filename, ".mpg")) //11.7 숙제
+    strcpy(filename, "video/mpg");
+  else if(strstr(filename, ".mp4")) //11.7 숙제
+    strcpy(filename, "video/mp4");
   else
     strcpy(filetype, "test/plain");
 }
