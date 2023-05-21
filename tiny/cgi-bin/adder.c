@@ -1,3 +1,4 @@
+//GET /cgi-bin/adder?15000&213 HTTP/1.0
 /*
  * adder.c - a minimal CGI program that adds two numbers together
  */
