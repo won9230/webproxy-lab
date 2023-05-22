@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -02 -Wall -I ..
 
-csapp.o: csapp.clean
+csapp.o: csapp.c
    $(CC) $(CFLAGS) -c csapp.c
    $(CC) $(CFLAGS) -c echo.c
    $(CC) $(CFLAGS) -c echoclient.c

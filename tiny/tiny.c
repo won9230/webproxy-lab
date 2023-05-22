@@ -8,7 +8,7 @@
  */
 #include "csapp.h"
 
-#define test11_9
+//#define test11_9
 
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
@@ -133,7 +133,7 @@ int parse_uri(char *uri, char *filename, char * cgiargs)
     strcat(filename, uri);
     if (uri[strlen(uri) - 1] == '/')
     {
-      strcat(filename, "home.html");
+      strcat(filename, "adder.html");
     }
     return 1;
   }
@@ -155,6 +155,31 @@ int parse_uri(char *uri, char *filename, char * cgiargs)
   }
 }
 
+#ifdef test11_9
+void serve_static(int fd, char *filename, int filesize)
+{
+  int srcfd;
+  char *srcp, filetype[MAXLINE], buf[MAXBUF];
+  get_filetype(filename, filetype);
+  sprintf(buf, "HTTP/1.0 200 OK\r\n");
+  sprintf(buf, "%sServer : Tiny Web Server\r\n", buf);
+  sprintf(buf, "%sConnention: close\r\n", buf);
+  sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
+  sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
+  Rio_writen(fd, buf, strlen(buf));
+  printf("Response headers:\n");
+  printf("%s", buf);
+
+
+
+  srcfd = Open(filename, O_RDONLY, 0);
+  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
+  Close(srcfd);
+  Rio_writen(fd, srcp, filesize);
+  Munmap(srcp, filesize);
+
+}
+#else
 void serve_static(int fd, char *filename, int filesize)
 {
   int srcfd;
@@ -170,12 +195,13 @@ void serve_static(int fd, char *filename, int filesize)
   printf("%s", buf);
 
   srcfd = Open(filename, O_RDONLY, 0);
-  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
+  srcp = malloc(filesize);
+  Rio_readn(srcfd, srcp, filesize);
   Close(srcfd);
   Rio_writen(fd, srcp, filesize);
-  Munmap(srcp, filesize);
+  free(srcp);
 }
-
+#endif
 void get_filetype(char *filename, char *filetype)
 {
   if(strstr(filename, ".html"))
@@ -186,12 +212,12 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "image/png");
   else if(strstr(filename, ".jpg"))
     strcpy(filetype, "image/jpeg");
-  // else if(strstr(filename, ".mpg")) //11.7 숙제
-  //   strcpy(filetype, "video/mpg");
+  else if(strstr(filename, ".mpg")) //11.7 숙제
+    strcpy(filetype, "video/mpg");
   else if(strstr(filename, ".mp4")) //11.7 숙제
     strcpy(filetype, "video/mp4");
   else
-    strcpy(filetype, "test/plain");
+    strcpy(filetype, "text/plain");
 }
 
 void serve_dynamic(int fd, char *filename, char *cgiargs)
