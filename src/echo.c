@@ -10,6 +10,6 @@ void echo(int connfd)
     while((n = Rio_readlineb(&rio, buf, MAXLINE)))
     {
         printf("server received %d bytes\n", (int)n);
-        Rio_weiten(connfd, buf, n);
+        Rio_writen(connfd, buf, n);
     }
 }

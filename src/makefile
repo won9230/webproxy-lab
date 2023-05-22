@@ -1,15 +1,18 @@
-# echoclient만 파일명에 맞게 바꿔주면 됨.
+CC = gcc
+CFLAGS = -02 -Wall -I ..
 
-
-echoserveri: echoserveri.o echoserveri.c echoclient.o
-	gcc -g -o echoserveri echoserveri.o
-
-echoclient : echoclient.o
-	gcc -o echoclient echoclient.o
-
+csapp.o: csapp.clean
+   $(CC) $(CFLAGS) -c csapp.c
+   $(CC) $(CFLAGS) -c echo.c
+   $(CC) $(CFLAGS) -c echoclient.c
+   $(CC) $(CFLAGS) -c echoserveri.c
+echoserveri:
+   $(CC) $(CFLAGS) echoserveri.o echo.o csapp.o -o echoserveri
+echoclient:
+   $(CC) $(CFLAGS) echoclient.o echo.o csapp.o -o echoserveri
 
 clean:
-	rm -f *.o
-	rm -f $(TARGET)
-	rm -f host_info
-	rm -f echoserveri
+   rm -f *.o csapp *~
+   rm -f *.o echo *~
+   rm -f *.o echoclient *~
+   rm -f *.o echoserveri *~

@@ -133,7 +133,7 @@ int parse_uri(char *uri, char *filename, char * cgiargs)
     strcat(filename, uri);
     if (uri[strlen(uri) - 1] == '/')
     {
-      strcat(filename, "test.html");
+      strcat(filename, "home.html");
     }
     return 1;
   }
@@ -186,10 +186,10 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "image/png");
   else if(strstr(filename, ".jpg"))
     strcpy(filetype, "image/jpeg");
-  else if(strstr(filename, ".mpg")) //11.7 숙제
-    strcpy(filename, "video/mpg");
+  // else if(strstr(filename, ".mpg")) //11.7 숙제
+  //   strcpy(filetype, "video/mpg");
   else if(strstr(filename, ".mp4")) //11.7 숙제
-    strcpy(filename, "video/mp4");
+    strcpy(filetype, "video/mp4");
   else
     strcpy(filetype, "test/plain");
 }

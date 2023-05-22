@@ -1,7 +1,4 @@
 #include "csapp.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 
 int main(int argc, char **argv)
 {
@@ -26,11 +23,11 @@ int main(int argc, char **argv)
     /* Walk the list and display each IP address */
     flags = NI_NUMERICHOST; /* Display address string instead of domain name */
     for (p = listp; p; p = p->ai_next) {
-        getnameinfo(p->ai_addr, p->ai_addrlen, buf, MAXLINE, NULL, 0, flags);
+        Getnameinfo(p->ai_addr, p->ai_addrlen, buf, MAXLINE, NULL, 0, flags);
         printf("%s\n", buf);
     }
 
     /* Clean up */
-    freeaddrinfo(listp);
+    Freeaddrinfo(listp);
     exit(0);
 }
