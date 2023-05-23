@@ -34,7 +34,7 @@ void doit(int fd)
   printf("%s",buf);
   sscanf(buf, "%s %s %s",method, uri, version);
   //11.11를 위한 HEAD 추가
-  if (!(!strcasecmp(method, "GET") || !strcasecmp(method, "HEAD")))  //클라이언트가 다른 메소드를 요청하면 에러 main으로 돌아간서 다음 연결 요청을 기다림
+  if (strcasecmp(method, "GET") && strcasecmp(method, "HEAD"))  //클라이언트가 다른 메소드를 요청하면 에러 main으로 돌아간서 다음 연결 요청을 기다림
   {
     printf("%d",method);
     clienterror(fd, method, "501", "Not implemented", "Tiny does not implement this method");
@@ -96,7 +96,7 @@ void read_requesthdrs(rio_t *rp)  //요청 헤더를 읽고 무시한다.
   while ((strcmp(buf, "\r\n")))
   {
     Rio_readlineb(rp, buf, MAXLINE);
-    printf("%s", buf);
+    printf("%s", buf); 
   }
   return;
 }
@@ -213,7 +213,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs, char *method)
   {
     setenv("QUERY_STRING", cgiargs, 1);
     //method를 cgi-bin/adder.c에 넘겨주기 위해 환경변수 set
-    setenv("REQUSET_METHOD", method,1);
+    setenv("REQUEST_METHOD", method, 1);
     Dup2(fd, STDOUT_FILENO);
     Execve(filename, emptylist, environ);
   }
