@@ -8,41 +8,18 @@
  */
 #include "csapp.h"
 
-//#define test11_9
+#define test11_9
 
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *filename, int filesize);
+void serve_static(int fd, char *filename, int filesize, char *method); //11.11 HEAD를 위한 메소드 추가
 void get_filetype(char *filename, char *filetype);
-void serve_dynamic(int fd, char *filename, char *cgiargs);
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method); //11.11 HEAD를 위한 메소드 추가
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg,
                  char *longmsg);
 
-int main(int argc, char **argv) { //반복실행 서버로 명령줄에서 넘겨받은 포트로의 연결 요청을 듣는다.
-  int listenfd, connfd;
-  char hostname[MAXLINE], port[MAXLINE];
-  socklen_t clientlen;
-  struct sockaddr_storage clientaddr;
 
-  /* Check command line args */
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <port>\n", argv[0]);
-    exit(1);
-  }
-
-  listenfd = Open_listenfd(argv[1]);  //듣기 소켓을 오픈한 후 반복적으로 접수하고
-  while (1) {
-    clientlen = sizeof(clientaddr);
-    connfd = Accept(listenfd, (SA *)&clientaddr,
-                    &clientlen);  // line:netp:tiny:accept   트랜잭션을 수행
-    Getnameinfo((SA *)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE,   //자신 쪽의 연결 끝을 닫는다.
-                0);
-    printf("Accepted connection from (%s, %s)\n", hostname, port);
-    doit(connfd);   // line:netp:tiny:doit
-    Close(connfd);  // line:netp:tiny:close
-  }
-}
 void doit(int fd)
 {
   int is_static;
@@ -56,8 +33,10 @@ void doit(int fd)
   printf("Requset headers:\n");
   printf("%s",buf);
   sscanf(buf, "%s %s %s",method, uri, version);
-  if (strcasecmp(method, "GET"))  //클라이언트가 다른 메소드를 요청하면 에러 main으로 돌아간서 다음 연결 요청을 기다림
+  //11.11를 위한 HEAD 추가
+  if (!(!strcasecmp(method, "GET") || !strcasecmp(method, "HEAD")))  //클라이언트가 다른 메소드를 요청하면 에러 main으로 돌아간서 다음 연결 요청을 기다림
   {
+    printf("%d",method);
     clienterror(fd, method, "501", "Not implemented", "Tiny does not implement this method");
     return;
   }
@@ -77,7 +56,7 @@ void doit(int fd)
       clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't read the file");
       return;
     }
-    serve_static(fd,filename, sbuf.st_size);  //맞으면 정적 컨텐츠를 클라이언트에게 제공
+    serve_static(fd,filename, sbuf.st_size, method);  //맞으면 정적 컨텐츠를 클라이언트에게 제공(11.11 method추가)
   }
   else  //동적 컨텐츠를 위한 것이라면
   {
@@ -86,7 +65,7 @@ void doit(int fd)
       clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't run the CGI program");
       return;
     }
-    serve_dynamic(fd, filename, cgiargs);  //맞으면 동적 컨텐츠를 클라이언트에게 제공
+    serve_dynamic(fd, filename, cgiargs, method);  //맞으면 동적 컨텐츠를 클라이언트에게 제공(11.11 method추가)
   }
 }
 
@@ -156,7 +135,7 @@ int parse_uri(char *uri, char *filename, char * cgiargs)
 }
 
 #ifdef test11_9
-void serve_static(int fd, char *filename, int filesize)
+void serve_static(int fd, char *filename, int filesize, char *method) //11.11 HEAD를 위한 메소드 추가
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -170,7 +149,30 @@ void serve_static(int fd, char *filename, int filesize)
   printf("Response headers:\n");
   printf("%s", buf);
 
-
+  if(strcasecmp(method, "GET") == 0)
+  {
+    srcfd = Open(filename, O_RDONLY, 0);
+    srcp = malloc(filesize);
+    Rio_readn(srcfd, srcp, filesize);
+    Close(srcfd);
+    Rio_writen(fd, srcp, filesize);
+    free(srcp);
+  }
+}
+#else
+void serve_static(int fd, char *filename, int filesize, char *method) //11.11 HEAD를 위한 메소드 추가
+{
+  int srcfd;
+  char *srcp, filetype[MAXLINE], buf[MAXBUF];
+  get_filetype(filename, filetype);
+  sprintf(buf, "HTTP/1.0 200 OK\r\n");
+  sprintf(buf, "%sServer : Tiny Web Server\r\n", buf);
+  sprintf(buf, "%sConnention: close\r\n", buf);
+  sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
+  sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
+  Rio_writen(fd, buf, strlen(buf));
+  printf("Response headers:\n");
+  printf("%s", buf);
 
   srcfd = Open(filename, O_RDONLY, 0);
   srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
@@ -178,28 +180,6 @@ void serve_static(int fd, char *filename, int filesize)
   Rio_writen(fd, srcp, filesize);
   Munmap(srcp, filesize);
 
-}
-#else
-void serve_static(int fd, char *filename, int filesize)
-{
-  int srcfd;
-  char *srcp, filetype[MAXLINE], buf[MAXBUF];
-  get_filetype(filename, filetype);
-  sprintf(buf, "HTTP/1.0 200 OK\r\n");
-  sprintf(buf, "%sServer : Tiny Web Server\r\n", buf);
-  sprintf(buf, "%sConnention: close\r\n", buf);
-  sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
-  sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
-  Rio_writen(fd, buf, strlen(buf));
-  printf("Response headers:\n");
-  printf("%s", buf);
-
-  srcfd = Open(filename, O_RDONLY, 0);
-  srcp = malloc(filesize);
-  Rio_readn(srcfd, srcp, filesize);
-  Close(srcfd);
-  Rio_writen(fd, srcp, filesize);
-  free(srcp);
 }
 #endif
 void get_filetype(char *filename, char *filetype)
@@ -220,7 +200,7 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "text/plain");
 }
 
-void serve_dynamic(int fd, char *filename, char *cgiargs)
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method)
 {
   char buf[MAXLINE], *emptylist[] = { NULL };
 
@@ -232,8 +212,35 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
   if (Fork() == 0)
   {
     setenv("QUERY_STRING", cgiargs, 1);
+    //method를 cgi-bin/adder.c에 넘겨주기 위해 환경변수 set
+    setenv("REQUSET_METHOD", method,1);
     Dup2(fd, STDOUT_FILENO);
     Execve(filename, emptylist, environ);
   }
   Wait(NULL);
+}
+
+int main(int argc, char **argv) { //반복실행 서버로 명령줄에서 넘겨받은 포트로의 연결 요청을 듣는다.
+  int listenfd, connfd;
+  char hostname[MAXLINE], port[MAXLINE];
+  socklen_t clientlen;
+  struct sockaddr_storage clientaddr;
+
+  /* Check command line args */
+  if (argc != 2) {
+    fprintf(stderr, "usage: %s <port>\n", argv[0]);
+    exit(1);
+  }
+
+  listenfd = Open_listenfd(argv[1]);  //듣기 소켓을 오픈한 후 반복적으로 접수하고
+  while (1) {
+    clientlen = sizeof(clientaddr);
+    connfd = Accept(listenfd, (SA *)&clientaddr,
+                    &clientlen);  // line:netp:tiny:accept   트랜잭션을 수행
+    Getnameinfo((SA *)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE,   //자신 쪽의 연결 끝을 닫는다.
+                0);
+    printf("Accepted connection from (%s, %s)\n", hostname, port);
+    doit(connfd);   // line:netp:tiny:doit
+    Close(connfd);  // line:netp:tiny:close
+  }
 }
